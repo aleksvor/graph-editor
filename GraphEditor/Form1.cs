@@ -12,13 +12,17 @@ using QuickGraph.Algorithms;
 using GraphSharp;
 using GraphEditor;
 using System.Runtime.InteropServices;
+using System.Xml.Serialization;
+using System.IO;
+using System.Xml.Linq;
+using System.Drawing.Drawing2D;
 
 
 
 namespace GraphEditor
 {
 
-    
+
     public partial class Form1 : Form
     {
 
@@ -26,88 +30,99 @@ namespace GraphEditor
         int nCurrentSize = 100;
         int nReSize = 10;
         TextBox[] txtBox = new TextBox[100];
+        List<Vertex> V = new List<Vertex>();
 
         //для рисование рёбер
         TextBox tBoxEdge;
         bool selected1 = false;
         List<Edge> E = new List<Edge>();
 
+        // координаы мыши
+        int Ox;
+        int Oy;
+
         public int newTextBox()
         {
-            
+            TextBox txtBox = new TextBox();
             try
             {
-                txtBox[nNumCurrentTextBox] = new TextBox();
+                //txtBox[nNumCurrentTextBox] = new TextBox();
+
+                V.Add(new Vertex(txtBox));
             }
             catch
             {
-                Array.Resize<TextBox>(ref txtBox, nCurrentSize + nReSize);
-                nCurrentSize = nCurrentSize + nReSize;
+                //Array.Resize<TextBox>(ref txtBox, nCurrentSize + nReSize);
+                //nCurrentSize = nCurrentSize + nReSize;
                 //To Do не ресайзится
             }
-            int CursorX = Cursor.Position.X;
-            int CursorY = Cursor.Position.Y;
+            //int CursorX = Cursor.Position.X;
+            //int CursorY = Cursor.Position.Y;
 
-           
+
             //.Location.X не работает??? а так как сделал не правильно
             //txtBox[nNumCurrentTextBox].Left = CursorX;
             //txtBox[nNumCurrentTextBox].Top = CursorY;
-            txtBox[nNumCurrentTextBox].Location = new System.Drawing.Point(Form1.MousePosition.X, Form1.MousePosition.Y); 
 
-            txtBox[nNumCurrentTextBox].Multiline = true;
-            txtBox[nNumCurrentTextBox].Width = 60;
-            txtBox[nNumCurrentTextBox].Height = 60;
-            txtBox[nNumCurrentTextBox].BackColor = Color.Silver;
-            txtBox[nNumCurrentTextBox].TextAlign = HorizontalAlignment.Center; //To Do по центру надо а тут сверху
+            txtBox.Location = new System.Drawing.Point(Ox, Oy);
+
+            txtBox.Multiline = true;
+            txtBox.Width = 60;
+            txtBox.Height = 60;
+            txtBox.BackColor = Color.Silver;
+            txtBox.TextAlign = HorizontalAlignment.Center; //To Do по центру надо а тут сверху
             System.Drawing.Drawing2D.GraphicsPath myPath =
                 new System.Drawing.Drawing2D.GraphicsPath();
-            myPath.AddEllipse(0, 0, txtBox[nNumCurrentTextBox].Width - 1, txtBox[nNumCurrentTextBox].Height - 1);
+            myPath.AddEllipse(0, 0, txtBox.Width - 1, txtBox.Height - 1);
             Region myRegion = new Region(myPath);
-            txtBox[nNumCurrentTextBox].Region = myRegion;
-            txtBox[nNumCurrentTextBox].Text = Convert.ToString(nNumCurrentTextBox);
+            txtBox.Region = myRegion;
+            txtBox.Text = Convert.ToString(nNumCurrentTextBox);
 
             // Пропушим себя ещё чтоб знать чо кликать
-            txtBox[nNumCurrentTextBox].Click += delegate(object sender, EventArgs e)
+            txtBox.Click += delegate(object sender, EventArgs e)
             { clickVertex(sender, e); };
 
-            txtBox[nNumCurrentTextBox].Parent = sheet;
+            txtBox.Parent = sheet;
 
             nNumCurrentTextBox++;
 
-            return 0; 
+            return 0;
         }
         public void clickVertex(object sender, EventArgs e)
         {
-            for (int i = 0; i<nNumCurrentTextBox; i++)
+            for (int i = 0; i < V.Count; i++)
             {
-                txtBox[i].BackColor = Color.Silver;
+                V[i].txtBoxVertex.BackColor = Color.Silver;
             }
-            TextBox tBox = (TextBox)sender; 
+            TextBox tBox = (TextBox)sender;
             tBox.BackColor = Color.Red;
 
             //Рисуем ребро
-            if(drawEdgeButton.Enabled == false)
+            if (drawEdgeButton.Enabled == false)
             {
-                if(selected1)
+                if (selected1)
                 {
 
-                    int x1 = tBoxEdge.Left + tBoxEdge.Width/2;
-                    int y1 = tBoxEdge.Top + tBoxEdge.Height/2;
-                    int x2 = tBox.Left + tBox.Width/2;
-                    int y2 = tBox.Top + tBox.Height/2;
-                    int k = (y2 - y1) / (x2 - x1);
-                    int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
-                    System.Drawing.Pen koord; 
-                    koord = new System.Drawing.Pen(System.Drawing.Color.Black);
-                    System.Drawing.Graphics MyFormGrap = sheet.CreateGraphics(); 
-                    MyFormGrap.DrawLine(koord, x1, y1, x2, y2); 
-                    koord.Dispose(); 
+                    float x1 = tBoxEdge.Left + tBoxEdge.Width / 2;
+                    float y1 = tBoxEdge.Top + tBoxEdge.Height / 2;
+                    float x2 = tBox.Left + 10;
+                    float y2 = tBox.Top + 10;
+                    float k = (y2 - y1) / (x2 - x1);
+                    float b = y1 - ((y2 - y1) * x1) / (x2 - x1);
+                    System.Drawing.Pen koord;
+                    koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
+                    AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
+                    koord.CustomStartCap = bigArrow;
+                    //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                    System.Drawing.Graphics MyFormGrap = sheet.CreateGraphics();
+                    MyFormGrap.DrawLine(koord, x2, y2, x1, y1);
+                    koord.Dispose();
                     MyFormGrap.Dispose();
-                    
 
-                    E.Add(new Edge(k, b, tBoxEdge, tBox));
+
+                    E.Add(new Edge(k, b, x1, x2, y1, y2, tBoxEdge, tBox));
                     selected1 = false;
-             
+
                 }
                 else
                 {
@@ -118,55 +133,133 @@ namespace GraphEditor
             //удаляем вершину
             if (deleteButton.Enabled == false)
             {
-                tBox.Parent = null;
+                for (int i = 0; i < V.Count; i++)
+                {
+                    if (V[i].txtBoxVertex == tBox)
+                    {
+                        V.RemoveAt(i);
+                    }
+                }
+                //Двойной цикл потому что при одинарном походу сбивается i
                 for (int i = 0; i < E.Count; i++)
                 {
-                    if ((E[i].txtBoxFrom.Text == tBox.Text) || (E[i].txtBoxTo.Text == tBox.Text))
+                    for (int j = 0; j < E.Count; j++)
                     {
-                        E.RemoveAt(i);
-                        Graphics g = Graphics.FromImage(sheet.Image);
-                        g.FillRectangle(Brushes.White, 0, 0, 1000, 1000);
-                        g.Dispose();
-                        sheet.Invalidate();
-                        for(int j = 0; j < E.Count; j++)
+                        if ((E[j].txtBoxFrom == tBox) || (E[j].txtBoxTo == tBox))
                         {
-                            int x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
-                            int y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
-                            int x2 = E[j].txtBoxTo.Left + E[j].txtBoxTo.Width / 2;
-                            int y2 = E[j].txtBoxTo.Top + E[j].txtBoxTo.Height / 2;
-                            int k = (y2 - y1) / (x2 - x1);
-                            int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
-                            System.Drawing.Pen koord;
-                            koord = new System.Drawing.Pen(System.Drawing.Color.Black);
-                            System.Drawing.Graphics MyFormGrap = sheet.CreateGraphics();
-                            MyFormGrap.DrawLine(koord, x1, y1, x2, y2);
-                            koord.Dispose();
-                            MyFormGrap.Dispose();
-                            sheet.Invalidate();
+                            E.RemoveAt(j);
                         }
                     }
                 }
+                tBox.Parent = null;
+                tBox = null;
+                reDrawAll();
             }
         }
 
-        public int deleteSomething()
+        public void reDrawAll()
         {
-            if (deleteButton.Enabled = false)
+            Graphics g = Graphics.FromImage(sheet.Image);
+            //System.Drawing.Graphics g = sheet.CreateGraphics();
+            g.FillRectangle(Brushes.White, 0, 0, 1000, 1000);
+            //g.Dispose();
+            //sheet.Invalidate();
+            for (int j = 0; j < E.Count; j++)
             {
+                int x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
+                int y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
+                int x2 = E[j].txtBoxTo.Left + 10;//E[j].txtBoxTo.Height / 2; ;
+                int y2 = E[j].txtBoxTo.Top + 10;//E[j].txtBoxTo.Height / 2; ;
+                int r = 30;
+                //double k1 = (y2 - y1);
+                //double k2 = (x2 - x1);
+                //double k = k1 / k2;
 
+                //float x1 = From.Left + From.Width / 2;
+                //float y1 = From.Top + From.Height / 2;
+               // float x2 = To.Left + To.Width / 2; ;
+                //float y2 = To.Top + To.Width / 2;
+                //float r = E[j].txtBoxTo.Width / 2;
+                float k1 = (y2 - y1);
+                float k2 = (x2 - x1);
+                float k = k1/k2;
+                float b = - (y1 - ((y2 - y1) * x1) / (x2 - x1));
+                double petr = 4 * k * k * b * b;
+                double petr1 = 4 * (1 + k * k) * (b * b - r * r);
+                double d = Math.Sqrt(petr - petr1);
+                double resx1 = (-2*k*b + d) / (2 * (1 + k * k));
+                double resx2 = (-2*k*b - d) / (2 * (1 + k * k));
+                double resy1 = k * resx1 + b;
+                float resx = (float)resx1;
+                float resy = (float)resy1;
+                //int k = (y2 - y1) / (x2 - x1);
+                //int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
+                System.Drawing.Pen koord;
+                koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
+                //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
+                koord.CustomStartCap = bigArrow;
+                g.DrawLine(koord, x2, y2, x1, y1);
+                koord.Dispose();
             }
-            return 0;
+            g.Dispose();
+            sheet.Invalidate();
         }
+
+        //Смотрим как рисовать долбаную стрелочку
+        public void drawArrowMda(TextBox From, TextBox To)
+        {
+            float x1 = From.Left + From.Width / 2;
+            float y1 = From.Top + From.Height / 2;
+            float x2 = To.Left + To.Width / 2; ;
+            float y2 = To.Top + To.Width / 2;
+            float r = To.Width / 2;
+            float k = (y2 - y1) / (x2 - x1);
+            float b = y1 - ((y2 - y1) * x1) / (x2 - x1);
+
+            double resx1 = (-b + Math.Sqrt(4 * k * k * b * b - 4 * (1 + 2 * k + k * k) * (b * b - r * r))) / (2 * (1 + 2 * k + k * k));
+            double resx2 = (-b - Math.Sqrt(4 * k * k * b * b - 4 * (1 + 2 * k + k * k) * (b * b - r * r))) / (2 * (1 + 2 * k + k * k));
+            double resy1 = k * resx1 + b;
+
+        }
+
+        public void deleteAll()
+        {
+            E.Clear();
+            //Двойной цикл потому что при одинарном походу сбивается i
+            for (int i = 0; i < V.Count; i++)
+            {
+                V[i].txtBoxVertex.Parent = null;
+                V[i].txtBoxVertex = null;
+            }
+            V.Clear();
+            reDrawAll();
+        }
+
+        public void checkForDelete()
+        {
+            for (int i = 0; i < E.Count; i++)
+            {
+                //Если попадаем в диапозон полосы
+                //В прямоугольнике в коором она нарисована то удаляем
+                if ((Oy - 8 < E[i].k * Ox + E[i].b) && ((Oy + 8 > E[i].k * Ox + E[i].b)))
+                {
+                    E.RemoveAt(i);
+                }
+            }
+            reDrawAll();
+        }
+
         public Form1()
         {
             InitializeComponent();
         }
 
-       
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Bitmap bitmap = new Bitmap(sheet.Width,sheet.Height);
+            Bitmap bitmap = new Bitmap(sheet.Width, sheet.Height);
             sheet.Image = bitmap;
         }
 
@@ -204,19 +297,203 @@ namespace GraphEditor
 
         private void sheet_Click(object sender, EventArgs e)
         {
-            newTextBox();
+            if (selectButton.Enabled == false)
+            {
+                newTextBox();
+            }
+            checkForDelete();
         }
 
+        private void sheet_MouseMove(object sender, MouseEventArgs e)
+        {
+            Ox = e.X;
+            Oy = e.Y;
+        }
+
+        private void сохранитьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*";
+            saveFileDialog.RestoreDirectory = true;
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                Save(saveFileDialog.FileName);
+            }
+        }
+
+        //Сохраняем в xml
+        public void Save(string fileName)
+        {
+            XDocument xdoc = new XDocument();
+            XElement document = new XElement("document");
+            XElement xeRectangles = new XElement("vertexs");
+            XElement xeLines = new XElement("lines");
+            //XElement xeComments = new XElement("comments");
+            for (int i = 0; i < V.Count; i++)
+            {
+                XElement rec = new XElement("vertex");
+                XAttribute Left = new XAttribute("Left", V[i].txtBoxVertex.Left);
+                rec.Add(Left);
+                XAttribute Top = new XAttribute("Top", V[i].txtBoxVertex.Top);
+                rec.Add(Top);
+                XAttribute Width = new XAttribute("Width", V[i].txtBoxVertex.Width);
+                rec.Add(Width);
+                XAttribute Heihgt = new XAttribute("Height", V[i].txtBoxVertex.Height);
+                rec.Add(Heihgt);
+                XAttribute Text = new XAttribute("Text", V[i].txtBoxVertex.Text);
+                rec.Add(Text);
+                xeRectangles.Add(rec);
+            }
+            for (int i = 0; i < E.Count; i++)
+            {
+                XElement rec = new XElement("Line");
+                XAttribute x1 = new XAttribute("x1", E[i].x1);
+                rec.Add(x1);
+                XAttribute x2 = new XAttribute("x2", E[i].x2);
+                rec.Add(x2);
+                XAttribute y1 = new XAttribute("y1", E[i].y1);
+                rec.Add(y1);
+                XAttribute y2 = new XAttribute("y2", E[i].y2);
+                rec.Add(y2);
+                XAttribute k = new XAttribute("k", E[i].k);
+                rec.Add(k);
+                XAttribute b = new XAttribute("b", E[i].b);
+                rec.Add(b);
+                for (int j = 0; j < V.Count; j++)
+                {
+                    if (E[i].txtBoxFrom == V[j].txtBoxVertex)
+                    {
+                        XAttribute From = new XAttribute("From", j);
+                        rec.Add(From);
+                    }
+                }
+                for (int j = 0; j < V.Count; j++)
+                {
+                    if (E[i].txtBoxTo == V[j].txtBoxVertex)
+                    {
+                        XAttribute To = new XAttribute("To", j);
+                        rec.Add(To);
+                    }
+                }
+                xeLines.Add(rec);
+            }
+            document.Add(xeRectangles);
+            document.Add(xeLines);
+            //document.Add(xeComments);
+            xdoc.Add(document);
+
+            xdoc.Save(fileName);
+        }
+
+        private void deleteALLButton_Click(object sender, EventArgs e)
+        {
+            deleteAll();
+        }
+
+        private void загрузитьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*";
+            openFileDialog.RestoreDirectory = true;
+            openFileDialog.Multiselect = false;
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                LoadAll(openFileDialog.FileName);
+            }
+        }
+
+        //Восстанавливаем из xml
+        public void LoadAll(string fileName)
+        {
+            deleteAll();
+            XDocument xdoc = XDocument.Load(fileName);
+
+            var xElements = xdoc.Elements("vertex");
+
+            foreach (XElement el in xdoc.Root.Elements())
+            {
+                if (el.Name == "vertexs")
+                {
+                    foreach (XElement ell in el.Elements())
+                    {
+                        if (ell.Name == "vertex")
+                        {
+                            TextBox loadTxtBox = new TextBox();
+                            loadTxtBox.Multiline = true;
+                            loadTxtBox.Parent = sheet;
+                            loadTxtBox.BackColor = Color.Silver;
+                            loadTxtBox.Left = Int32.Parse(ell.Attribute("Left").Value);
+                            loadTxtBox.Top = Int32.Parse(ell.Attribute("Top").Value);
+                            loadTxtBox.Width = Int32.Parse(ell.Attribute("Width").Value);
+                            loadTxtBox.Height = Int32.Parse(ell.Attribute("Height").Value);
+                            loadTxtBox.Text = ell.Attribute("Text").Value;
+                            loadTxtBox.TextAlign = HorizontalAlignment.Center; //To Do по центру надо а тут сверху
+                            System.Drawing.Drawing2D.GraphicsPath myPath =
+                                new System.Drawing.Drawing2D.GraphicsPath();
+                            myPath.AddEllipse(0, 0, loadTxtBox.Width - 1, loadTxtBox.Height - 1);
+                            Region myRegion = new Region(myPath);
+                            loadTxtBox.Region = myRegion;
+                            // Пропушим себя ещё чтоб знать чо кликать
+                            loadTxtBox.Click += delegate(object sender, EventArgs e)
+                            { clickVertex(sender, e); };
+                            V.Add(new Vertex(loadTxtBox));
+                        }
+
+                    }
+                }
+                if (el.Name == "lines")
+                {
+                    foreach (XElement ell in el.Elements())
+                    {
+                        if (ell.Name == "line")
+                        {
+                            float x1 = float.Parse(ell.Attribute("x1").Value);
+                            float x2 = float.Parse(ell.Attribute("x2").Value);
+                            float y1 = float.Parse(ell.Attribute("y1").Value);
+                            float y2 = float.Parse(ell.Attribute("y2").Value);
+                            float k = float.Parse(ell.Attribute("k").Value);
+                            float b = float.Parse(ell.Attribute("b").Value);
+                            int from = Int32.Parse(ell.Attribute("From").Value);
+                            int To = Int32.Parse(ell.Attribute("To").Value);
+                            E.Add(new Edge(k, b, x1, x2, y1, y2,
+                                V[from].txtBoxVertex,
+                                V[To].txtBoxVertex));
+                        }
+                    }
+                }
+            }
+            reDrawAll();
+        }
+
+
     }
-    class Edge
+
+    public class Vertex
     {
-        public int k, b;
+        public TextBox txtBoxVertex;
+
+        public Vertex(TextBox txtBoxVertex)
+        {
+            this.txtBoxVertex = txtBoxVertex;
+        }
+    }
+
+    public class Edge
+    {
+        public float k, b, x1, x2, y1, y2;
         public TextBox txtBoxFrom, txtBoxTo;
 
-        public Edge(int k, int b, TextBox txtBoxFrom, TextBox txtBoxTo)
+        public Edge(float k, float b,
+            float x1, float x2,
+            float y1, float y2,
+            TextBox txtBoxFrom, TextBox txtBoxTo)
         {
             this.k = k;
             this.b = b;
+            this.x1 = x1;
+            this.x2 = x2;
+            this.y1 = y1;
+            this.y2 = y2;
             this.txtBoxFrom = txtBoxFrom;
             this.txtBoxTo = txtBoxTo;
         }

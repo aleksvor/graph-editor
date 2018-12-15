@@ -32,6 +32,11 @@ namespace GraphEditor
         TextBox[] txtBox = new TextBox[100];
         List<Vertex> V = new List<Vertex>();
 
+        bool isDrag = false;
+        int txOx = 0;
+        int txOy = 0;
+        int scrollValue = 0;
+
         //для рисование рёбер
         TextBox tBoxEdge;
         bool selected1 = false;
@@ -79,8 +84,12 @@ namespace GraphEditor
             txtBox.Text = Convert.ToString(nNumCurrentTextBox);
 
             // Пропушим себя ещё чтоб знать чо кликать
-            txtBox.Click += delegate(object sender, EventArgs e)
+            txtBox.MouseDown += delegate(object sender, MouseEventArgs e)
             { clickVertex(sender, e); };
+            txtBox.MouseMove += delegate(object sender, MouseEventArgs e)
+            { setMouseMove(sender, e); };
+            txtBox.MouseUp += delegate(object sender, MouseEventArgs e)
+            { isDragOff(sender, e); };
 
             txtBox.Parent = sheet;
 
@@ -88,14 +97,37 @@ namespace GraphEditor
 
             return 0;
         }
-        public void clickVertex(object sender, EventArgs e)
+        public void setMouseMove(object sender, MouseEventArgs e)
         {
+            TextBox tBox = (TextBox)sender;
+            if (selectButton.Enabled == false)
+            {
+                if (isDrag == true)
+                {
+                    {
+                        Ox = tBox.Left + e.X;
+                        Oy = tBox.Top + e.Y;
+                        tBox.Location = new System.Drawing.Point(Ox, Oy);
+                        reDrawAll();
+                    }
+                }
+            }
+            
+        }
+        public void isDragOff(object sender, MouseEventArgs e)
+        {
+            isDrag = false;
+        }
+        public void clickVertex(object sender, MouseEventArgs e)
+        {
+            isDrag = true;
             for (int i = 0; i < V.Count; i++)
             {
                 V[i].txtBoxVertex.BackColor = Color.Silver;
             }
             TextBox tBox = (TextBox)sender;
             tBox.BackColor = Color.Red;
+            propertyGrid1.SelectedObject = tBox;
 
             //Рисуем ребро
             if (drawEdgeButton.Enabled == false)
@@ -159,51 +191,55 @@ namespace GraphEditor
 
         public void reDrawAll()
         {
-            Graphics g = Graphics.FromImage(sheet.Image);
-            //System.Drawing.Graphics g = sheet.CreateGraphics();
-            g.FillRectangle(Brushes.White, 0, 0, 1000, 1000);
-            //g.Dispose();
-            //sheet.Invalidate();
-            for (int j = 0; j < E.Count; j++)
+            try
             {
-                int x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
-                int y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
-                int x2 = E[j].txtBoxTo.Left + 10;//E[j].txtBoxTo.Height / 2; ;
-                int y2 = E[j].txtBoxTo.Top + 10;//E[j].txtBoxTo.Height / 2; ;
-                int r = 30;
-                //double k1 = (y2 - y1);
-                //double k2 = (x2 - x1);
-                //double k = k1 / k2;
+                Graphics g = Graphics.FromImage(sheet.Image);
+                //System.Drawing.Graphics g = sheet.CreateGraphics();
+                g.FillRectangle(Brushes.White, 0, 0, 1000, 1000);
+                //g.Dispose();
+                //sheet.Invalidate();
+                for (int j = 0; j < E.Count; j++)
+                {
+                    int x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
+                    int y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
+                    int x2 = E[j].txtBoxTo.Left + 10;//E[j].txtBoxTo.Height / 2; ;
+                    int y2 = E[j].txtBoxTo.Top + 10;//E[j].txtBoxTo.Height / 2; ;
+                    int r = 30;
+                    //double k1 = (y2 - y1);
+                    //double k2 = (x2 - x1);
+                    //double k = k1 / k2;
 
-                //float x1 = From.Left + From.Width / 2;
-                //float y1 = From.Top + From.Height / 2;
-               // float x2 = To.Left + To.Width / 2; ;
-                //float y2 = To.Top + To.Width / 2;
-                //float r = E[j].txtBoxTo.Width / 2;
-                float k1 = (y2 - y1);
-                float k2 = (x2 - x1);
-                float k = k1/k2;
-                float b = - (y1 - ((y2 - y1) * x1) / (x2 - x1));
-                double petr = 4 * k * k * b * b;
-                double petr1 = 4 * (1 + k * k) * (b * b - r * r);
-                double d = Math.Sqrt(petr - petr1);
-                double resx1 = (-2*k*b + d) / (2 * (1 + k * k));
-                double resx2 = (-2*k*b - d) / (2 * (1 + k * k));
-                double resy1 = k * resx1 + b;
-                float resx = (float)resx1;
-                float resy = (float)resy1;
-                //int k = (y2 - y1) / (x2 - x1);
-                //int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
-                System.Drawing.Pen koord;
-                koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
-                //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
-                AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
-                koord.CustomStartCap = bigArrow;
-                g.DrawLine(koord, x2, y2, x1, y1);
-                koord.Dispose();
+                    //float x1 = From.Left + From.Width / 2;
+                    //float y1 = From.Top + From.Height / 2;
+                    // float x2 = To.Left + To.Width / 2; ;
+                    //float y2 = To.Top + To.Width / 2;
+                    //float r = E[j].txtBoxTo.Width / 2;
+                    float k1 = (y2 - y1);
+                    float k2 = (x2 - x1);
+                    float k = k1 / k2;
+                    float b = -(y1 - ((y2 - y1) * x1) / (x2 - x1));
+                    double petr = 4 * k * k * b * b;
+                    double petr1 = 4 * (1 + k * k) * (b * b - r * r);
+                    double d = Math.Sqrt(petr - petr1);
+                    double resx1 = (-2 * k * b + d) / (2 * (1 + k * k));
+                    double resx2 = (-2 * k * b - d) / (2 * (1 + k * k));
+                    double resy1 = k * resx1 + b;
+                    float resx = (float)resx1;
+                    float resy = (float)resy1;
+                    //int k = (y2 - y1) / (x2 - x1);
+                    //int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
+                    System.Drawing.Pen koord;
+                    koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
+                    //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                    AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
+                    koord.CustomStartCap = bigArrow;
+                    g.DrawLine(koord, x2, y2, x1, y1);
+                    koord.Dispose();
+                }
+                g.Dispose();
+                sheet.Invalidate();
             }
-            g.Dispose();
-            sheet.Invalidate();
+            catch { }
         }
 
         //Смотрим как рисовать долбаную стрелочку
@@ -261,6 +297,12 @@ namespace GraphEditor
         {
             Bitmap bitmap = new Bitmap(sheet.Width, sheet.Height);
             sheet.Image = bitmap;
+            //vScrollBar1.Parent = sheet;
+            //vScrollBar1.Visible = true;
+            //sheet.Controls. Add(vScrollBar1);
+            sheet.Height = 10000;
+            
+            //TextBox ffd = new TextBox();
         }
 
         private void Form1_Click(object sender, EventArgs e)
@@ -272,6 +314,7 @@ namespace GraphEditor
         private void drawEdgeButton_Click(object sender, EventArgs e)
         {
             drawEdgeButton.Enabled = false;
+            drawVertexButton.Enabled = true;
             selectButton.Enabled = true;
             deleteButton.Enabled = true;
         }
@@ -279,6 +322,7 @@ namespace GraphEditor
         private void selectButton_Click(object sender, EventArgs e)
         {
             drawEdgeButton.Enabled = true;
+            drawVertexButton.Enabled = true;
             selectButton.Enabled = false;
             deleteButton.Enabled = true;
         }
@@ -286,6 +330,7 @@ namespace GraphEditor
         private void deleteButton_Click(object sender, EventArgs e)
         {
             drawEdgeButton.Enabled = true;
+            drawVertexButton.Enabled = true;
             selectButton.Enabled = true;
             deleteButton.Enabled = false;
         }
@@ -297,7 +342,7 @@ namespace GraphEditor
 
         private void sheet_Click(object sender, EventArgs e)
         {
-            if (selectButton.Enabled == false)
+            if (drawVertexButton.Enabled == false)
             {
                 newTextBox();
             }
@@ -434,7 +479,7 @@ namespace GraphEditor
                             Region myRegion = new Region(myPath);
                             loadTxtBox.Region = myRegion;
                             // Пропушим себя ещё чтоб знать чо кликать
-                            loadTxtBox.Click += delegate(object sender, EventArgs e)
+                            loadTxtBox.MouseDown += delegate(object sender, MouseEventArgs e)
                             { clickVertex(sender, e); };
                             V.Add(new Vertex(loadTxtBox));
                         }
@@ -462,6 +507,49 @@ namespace GraphEditor
                     }
                 }
             }
+            reDrawAll();
+        }
+
+        private void selectButton_MouseDown(object sender, MouseEventArgs e)
+        {
+
+        }
+
+        private void selectButton_MouseMove(object sender, MouseEventArgs e)
+        {
+
+        }
+
+        private void sheet_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void drawVertexButton_Click(object sender, EventArgs e)
+        {
+            drawEdgeButton.Enabled = true;
+            drawVertexButton.Enabled = false;
+            selectButton.Enabled = true;
+            deleteButton.Enabled = true;
+        }
+
+        private void vScrollBar1_ValueChanged(object sender, EventArgs e)
+        {
+            if (scrollValue < vScrollBar1.Value)
+            {
+                for (int i=0; i<V.Count; i++)
+                {
+                    V[i].txtBoxVertex.Top = V[i].txtBoxVertex.Top - 10 * (vScrollBar1.Value-scrollValue);
+                }
+            }
+            if (scrollValue > vScrollBar1.Value)
+            {
+                for (int i = 0; i < V.Count; i++)
+                {
+                    V[i].txtBoxVertex.Top = V[i].txtBoxVertex.Top + 10 * (-vScrollBar1.Value + scrollValue);
+                }
+            }
+            scrollValue = vScrollBar1.Value;
             reDrawAll();
         }
 

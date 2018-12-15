@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace GraphEditor
 {
-    class Elements
+    namespace Elements
     {
         class Vertex
         {
@@ -20,17 +20,25 @@ namespace GraphEditor
         }
         class Edge
         {
-            public float k, b;
+            public float k, b, x1, x2, y1, y2;
             public TextBox txtBoxFrom, txtBoxTo;
 
-            public Edge(float k, float b, TextBox txtBoxFrom, TextBox txtBoxTo)
+            public Edge(float k, float b,
+                float x1, float x2,
+                float y1, float y2,
+                TextBox txtBoxFrom, TextBox txtBoxTo)
             {
                 this.k = k;
                 this.b = b;
+                this.x1 = x1;
+                this.x2 = x2;
+                this.y1 = y1;
+                this.y2 = y2;
                 this.txtBoxFrom = txtBoxFrom;
                 this.txtBoxTo = txtBoxTo;
             }
         }
+
     }
 
 }

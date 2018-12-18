@@ -38,8 +38,9 @@
             this.сохранитьToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.загрузитьToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sheet = new System.Windows.Forms.PictureBox();
-            this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
+            this.propertyGrid = new System.Windows.Forms.PropertyGrid();
             this.vScrollBar1 = new System.Windows.Forms.VScrollBar();
+            this.btnReVertex = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.sheet)).BeginInit();
             this.SuspendLayout();
@@ -53,13 +54,14 @@
             this.selectButton.TabIndex = 14;
             this.selectButton.Text = "Выделить";
             this.selectButton.UseVisualStyleBackColor = true;
+            this.selectButton.SizeChanged += new System.EventHandler(this.selectButton_SizeChanged);
             this.selectButton.Click += new System.EventHandler(this.selectButton_Click);
             this.selectButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.selectButton_MouseDown);
             this.selectButton.MouseMove += new System.Windows.Forms.MouseEventHandler(this.selectButton_MouseMove);
             // 
             // deleteALLButton
             // 
-            this.deleteALLButton.Location = new System.Drawing.Point(16, 302);
+            this.deleteALLButton.Location = new System.Drawing.Point(15, 365);
             this.deleteALLButton.Margin = new System.Windows.Forms.Padding(4);
             this.deleteALLButton.Name = "deleteALLButton";
             this.deleteALLButton.Size = new System.Drawing.Size(132, 55);
@@ -70,7 +72,7 @@
             // 
             // deleteButton
             // 
-            this.deleteButton.Location = new System.Drawing.Point(16, 239);
+            this.deleteButton.Location = new System.Drawing.Point(15, 302);
             this.deleteButton.Margin = new System.Windows.Forms.Padding(4);
             this.deleteButton.Name = "deleteButton";
             this.deleteButton.Size = new System.Drawing.Size(132, 55);
@@ -81,7 +83,7 @@
             // 
             // drawEdgeButton
             // 
-            this.drawEdgeButton.Location = new System.Drawing.Point(16, 176);
+            this.drawEdgeButton.Location = new System.Drawing.Point(15, 176);
             this.drawEdgeButton.Margin = new System.Windows.Forms.Padding(4);
             this.drawEdgeButton.Name = "drawEdgeButton";
             this.drawEdgeButton.Size = new System.Drawing.Size(133, 55);
@@ -147,16 +149,22 @@
             this.sheet.TabStop = false;
             this.sheet.Click += new System.EventHandler(this.sheet_Click);
             this.sheet.Paint += new System.Windows.Forms.PaintEventHandler(this.sheet_Paint);
+            this.sheet.MouseDown += new System.Windows.Forms.MouseEventHandler(this.sheet_MouseDown);
             this.sheet.MouseMove += new System.Windows.Forms.MouseEventHandler(this.sheet_MouseMove);
+            this.sheet.MouseUp += new System.Windows.Forms.MouseEventHandler(this.sheet_MouseUp);
             // 
-            // propertyGrid1
+            // propertyGrid
             // 
-            this.propertyGrid1.LineColor = System.Drawing.SystemColors.ControlDark;
-            this.propertyGrid1.Location = new System.Drawing.Point(982, 42);
-            this.propertyGrid1.Margin = new System.Windows.Forms.Padding(4);
-            this.propertyGrid1.Name = "propertyGrid1";
-            this.propertyGrid1.Size = new System.Drawing.Size(325, 511);
-            this.propertyGrid1.TabIndex = 15;
+            this.propertyGrid.LineColor = System.Drawing.SystemColors.ControlDark;
+            this.propertyGrid.Location = new System.Drawing.Point(982, 42);
+            this.propertyGrid.Margin = new System.Windows.Forms.Padding(4);
+            this.propertyGrid.Name = "propertyGrid";
+            this.propertyGrid.Size = new System.Drawing.Size(325, 511);
+            this.propertyGrid.TabIndex = 15;
+            this.propertyGrid.PropertyValueChanged += new System.Windows.Forms.PropertyValueChangedEventHandler(this.propertyGrid_PropertyValueChanged);
+            this.propertyGrid.SelectedGridItemChanged += new System.Windows.Forms.SelectedGridItemChangedEventHandler(this.propertyGrid_SelectedGridItemChanged);
+            this.propertyGrid.SelectedObjectsChanged += new System.EventHandler(this.propertyGrid_SelectedObjectsChanged);
+            this.propertyGrid.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.propertyGrid_PreviewKeyDown);
             // 
             // vScrollBar1
             // 
@@ -168,14 +176,25 @@
             this.vScrollBar1.Value = 1;
             this.vScrollBar1.ValueChanged += new System.EventHandler(this.vScrollBar1_ValueChanged);
             // 
+            // btnReVertex
+            // 
+            this.btnReVertex.Location = new System.Drawing.Point(15, 239);
+            this.btnReVertex.Margin = new System.Windows.Forms.Padding(4);
+            this.btnReVertex.Name = "btnReVertex";
+            this.btnReVertex.Size = new System.Drawing.Size(133, 55);
+            this.btnReVertex.TabIndex = 20;
+            this.btnReVertex.Text = "Перепривязать ребро";
+            this.btnReVertex.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1365, 1024);
+            this.Controls.Add(this.btnReVertex);
             this.Controls.Add(this.vScrollBar1);
             this.Controls.Add(this.sheet);
-            this.Controls.Add(this.propertyGrid1);
+            this.Controls.Add(this.propertyGrid);
             this.Controls.Add(this.selectButton);
             this.Controls.Add(this.deleteALLButton);
             this.Controls.Add(this.deleteButton);
@@ -209,8 +228,9 @@
         private System.Windows.Forms.ToolStripMenuItem сохранитьToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem загрузитьToolStripMenuItem;
         private System.Windows.Forms.PictureBox sheet;
-        private System.Windows.Forms.PropertyGrid propertyGrid1;
+        private System.Windows.Forms.PropertyGrid propertyGrid;
         private System.Windows.Forms.VScrollBar vScrollBar1;
+        private System.Windows.Forms.Button btnReVertex;
 
 
     }

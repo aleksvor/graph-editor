@@ -16,7 +16,10 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Xml.Linq;
 using System.Drawing.Drawing2D;
-using GraphEditor.Elements;
+using System.Globalization;
+using System.Reflection;
+
+
 
 namespace GraphEditor
 {
@@ -26,24 +29,35 @@ namespace GraphEditor
     {
 
         int nNumCurrentTextBox = 0;
-        int nCurrentSize = 100;
-        int nReSize = 10;
+
         TextBox[] txtBox = new TextBox[100];
         List<Vertex> V = new List<Vertex>();
 
+        //для перемещения вершин
         bool isDrag = false;
-        int txOx = 0;
-        int txOy = 0;
+        //для перемешения ребер
+        bool newEdgeDraw = false;
+        int xStart;
+        int yStart;
+        TextBox txtBoxStart;
+
+        //скрол
         int scrollValue = 0;
 
         //для рисование рёбер
         TextBox tBoxEdge;
         bool selected1 = false;
         List<Edge> E = new List<Edge>();
+        //пока не связан
+        PropertyCategories propGreedFields = new PropertyCategories();
 
         // координаы мыши
         int Ox;
         int Oy;
+        //Координаты для выделения
+        int OxSelected;
+        int OySelected;
+        bool alreadySelected = false;
 
         public int newTextBox()
         {
@@ -89,6 +103,8 @@ namespace GraphEditor
             { setMouseMove(sender, e); };
             txtBox.MouseUp += delegate(object sender, MouseEventArgs e)
             { isDragOff(sender, e); };
+            //txtBox.SizeChanged += delegate(object sender, EventArgs e)
+            //{ reElipse(sender, e); };
 
             txtBox.Parent = sheet;
 
@@ -111,7 +127,7 @@ namespace GraphEditor
                     }
                 }
             }
-            
+
         }
         public void isDragOff(object sender, MouseEventArgs e)
         {
@@ -126,7 +142,7 @@ namespace GraphEditor
             }
             TextBox tBox = (TextBox)sender;
             tBox.BackColor = Color.Red;
-            propertyGrid1.SelectedObject = tBox;
+            propertyGrid.SelectedObject = tBox;
 
             //Рисуем ребро
             if (drawEdgeButton.Enabled == false)
@@ -147,11 +163,17 @@ namespace GraphEditor
                     //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
                     System.Drawing.Graphics MyFormGrap = sheet.CreateGraphics();
                     MyFormGrap.DrawLine(koord, x2, y2, x1, y1);
+                    //пишем
+                    string str = "лол";
+                    float nStrX = (x1 + x2) / 2;
+                    float nStrY = (y1 + y2) / 2;
+                    MyFormGrap.DrawString(str, new Font(FontFamily.GenericSansSerif, 12.0F, FontStyle.Regular),
+                        new SolidBrush(System.Drawing.Color.Black), nStrX, nStrY);
                     koord.Dispose();
                     MyFormGrap.Dispose();
 
-
-                    E.Add(new Edge(k, b, x1, x2, y1, y2, tBoxEdge, tBox));
+                    PropertyCategories line = new PropertyCategories(); 
+                    E.Add(new Edge(k, b, x1, x2, y1, y2, tBoxEdge, tBox, line));
                     selected1 = false;
 
                 }
@@ -194,15 +216,15 @@ namespace GraphEditor
             {
                 Graphics g = Graphics.FromImage(sheet.Image);
                 //System.Drawing.Graphics g = sheet.CreateGraphics();
-                g.FillRectangle(Brushes.White, 0, 0, 1000, 1000);
+                g.FillRectangle(Brushes.White, 0, 0, sheet.Width, sheet.Height);
                 //g.Dispose();
                 //sheet.Invalidate();
                 for (int j = 0; j < E.Count; j++)
                 {
-                    int x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
-                    int y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
-                    int x2 = E[j].txtBoxTo.Left + 10;//E[j].txtBoxTo.Height / 2; ;
-                    int y2 = E[j].txtBoxTo.Top + 10;//E[j].txtBoxTo.Height / 2; ;
+                    float x1 = E[j].txtBoxFrom.Left + E[j].txtBoxFrom.Width / 2;
+                    float y1 = E[j].txtBoxFrom.Top + E[j].txtBoxFrom.Height / 2;
+                    float x2 = E[j].txtBoxTo.Left + 10;//E[j].txtBoxTo.Height / 2; ;
+                    float y2 = E[j].txtBoxTo.Top + 10;//E[j].txtBoxTo.Height / 2; ;
                     int r = 30;
                     //double k1 = (y2 - y1);
                     //double k2 = (x2 - x1);
@@ -213,18 +235,28 @@ namespace GraphEditor
                     // float x2 = To.Left + To.Width / 2; ;
                     //float y2 = To.Top + To.Width / 2;
                     //float r = E[j].txtBoxTo.Width / 2;
-                    float k1 = (y2 - y1);
-                    float k2 = (x2 - x1);
-                    float k = k1 / k2;
-                    float b = -(y1 - ((y2 - y1) * x1) / (x2 - x1));
-                    double petr = 4 * k * k * b * b;
-                    double petr1 = 4 * (1 + k * k) * (b * b - r * r);
-                    double d = Math.Sqrt(petr - petr1);
-                    double resx1 = (-2 * k * b + d) / (2 * (1 + k * k));
-                    double resx2 = (-2 * k * b - d) / (2 * (1 + k * k));
-                    double resy1 = k * resx1 + b;
-                    float resx = (float)resx1;
-                    float resy = (float)resy1;
+                    //float k1 = (y2 - y1);
+                    //float k2 = (x2 - x1);
+                    //float k = k1 / k2;
+                    float k = (y2 - y1) / (x2 - x1);
+                    float b = y1 - ((y2 - y1) * x1) / (x2 - x1);
+                    //float b = -(y1 - ((y2 - y1) * x1) / (x2 - x1));
+                    //Скорректируем коофициенты
+                    E[j].k = k;
+                    E[j].x1 = x1;
+                    E[j].x2 = x2;
+                    E[j].y1 = y1;
+                    E[j].y2 = y2;
+                    E[j].b = b;
+
+                    //double petr = 4 * k * k * b * b;
+                    //double petr1 = 4 * (1 + k * k) * (b * b - r * r);
+                    //double d = Math.Sqrt(petr - petr1);
+                    //double resx1 = (-2 * k * b + d) / (2 * (1 + k * k));
+                    //double resx2 = (-2 * k * b - d) / (2 * (1 + k * k));
+                    //double resy1 = k * resx1 + b;
+                    //float resx = (float)resx1;
+                    //float resy = (float)resy1;
                     //int k = (y2 - y1) / (x2 - x1);
                     //int b = y1 - ((y2 - y1) * x1) / (x2 - x1);
                     System.Drawing.Pen koord;
@@ -233,6 +265,12 @@ namespace GraphEditor
                     AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
                     koord.CustomStartCap = bigArrow;
                     g.DrawLine(koord, x2, y2, x1, y1);
+                    //пишем
+                    string str = E[j].currentLine.TextParam1;
+                    float nStrX = (x1 + x2) / 2;
+                    float nStrY = (y1 + y2) / 2;
+                    g.DrawString(str, new Font(FontFamily.GenericSansSerif, 12.0F, FontStyle.Regular),
+                        new SolidBrush(System.Drawing.Color.Black), nStrX, nStrY);
                     koord.Dispose();
                 }
                 g.Dispose();
@@ -284,6 +322,20 @@ namespace GraphEditor
             }
             reDrawAll();
         }
+        public void checkForNewVetrex4Line()
+        {
+            for (int i = 0; i < E.Count; i++)
+            {
+                //Если попадаем в диапозон полосы
+                //В прямоугольнике в коором она нарисована то удаляем
+                if ((Oy - 8 < E[i].k * Ox + E[i].b) && ((Oy + 8 > E[i].k * Ox + E[i].b)))
+                {
+                    E.RemoveAt(i);
+                }
+            }
+            reDrawAll();
+        }
+
 
         public Form1()
         {
@@ -299,8 +351,8 @@ namespace GraphEditor
             //vScrollBar1.Parent = sheet;
             //vScrollBar1.Visible = true;
             //sheet.Controls. Add(vScrollBar1);
-            sheet.Height = 10000;
-            
+            //sheet.Height = 10000;
+
             //TextBox ffd = new TextBox();
         }
 
@@ -345,13 +397,86 @@ namespace GraphEditor
             {
                 newTextBox();
             }
-            checkForDelete();
+            //Удаляем стрелочки
+            if (deleteButton.Enabled == false)
+            {
+                checkForDelete();
+            }
+            if (selectButton.Enabled == false)
+            {
+                checkForProps(); //проперти грид
+            }
+        }
+
+        public void checkForProps()
+        {
+
+            for (int i = 0; i < E.Count; i++)
+            {
+                //Если попадаем в диапозон полосы
+                //В прямоугольнике в коором она нарисована то удаляем
+                if ((Oy - 8 < E[i].k * Ox + E[i].b) && ((Oy + 8 > E[i].k * Ox + E[i].b)))
+                {
+                    propertyGrid.SelectedObject = E[i].currentLine;
+                }
+            }
         }
 
         private void sheet_MouseMove(object sender, MouseEventArgs e)
         {
             Ox = e.X;
             Oy = e.Y;
+            if (newEdgeDraw == true)
+            {
+                try
+                {
+                    Graphics g = Graphics.FromImage(sheet.Image);
+                    //System.Drawing.Graphics g = sheet.CreateGraphics();
+                    g.FillRectangle(Brushes.White, 0, 0, sheet.Width, sheet.Height);
+                    //g.Dispose();
+                    //sheet.Invalidate();
+                    float x1 = txtBoxStart.Left + txtBoxStart.Width / 2;
+                    float y1 = txtBoxStart.Top + txtBoxStart.Height / 2;
+
+                    System.Drawing.Pen koord;
+                    koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
+                    //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                    AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
+                    koord.CustomStartCap = bigArrow;
+                    g.DrawLine(koord, Ox, Oy, x1, y1);
+                    koord.Dispose();
+                    g.Dispose();
+                    sheet.Invalidate();
+                }
+                catch { }
+            }
+            if(((selectButton.Enabled == false) || (deleteButton.Enabled == false))&& (alreadySelected == true))
+            {
+                reDrawAll();
+                try
+                {
+                    Graphics g = Graphics.FromImage(sheet.Image);
+                    //System.Drawing.Graphics g = sheet.CreateGraphics();
+                    //g.FillRectangle(Brushes.White, 0, 0, sheet.Width, sheet.Height);
+ 
+
+                    System.Drawing.Pen koord;
+                    koord = new System.Drawing.Pen(System.Drawing.Color.Black, 3);
+                    //koord.StartCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+                    //AdjustableArrowCap bigArrow = new AdjustableArrowCap(7, 9);
+                    //koord.CustomStartCap = bigArrow;
+                    g.DrawLine(koord, OxSelected, OySelected, Ox, OySelected);// Верхняя парал
+                    g.DrawLine(koord, OxSelected, OySelected, OxSelected, Oy);//Левая
+                    g.DrawLine(koord, Ox, OySelected, Ox, Oy); //Нижняя
+                    g.DrawLine(koord, OxSelected, Oy, Ox, Oy);//Правая
+
+                    //g.DrawRectangle(koord, OxSelected, OySelected, Ox - OxSelected, Oy - OySelected);
+                    koord.Dispose();
+                    g.Dispose();
+                    sheet.Invalidate();
+                }
+                catch { }
+            }
         }
 
         private void сохранитьToolStripMenuItem_Click(object sender, EventArgs e)
@@ -480,6 +605,10 @@ namespace GraphEditor
                             // Пропушим себя ещё чтоб знать чо кликать
                             loadTxtBox.MouseDown += delegate(object sender, MouseEventArgs e)
                             { clickVertex(sender, e); };
+                            loadTxtBox.MouseMove += delegate(object sender, MouseEventArgs e)
+                            { setMouseMove(sender, e); };
+                            loadTxtBox.MouseUp += delegate(object sender, MouseEventArgs e)
+                            { isDragOff(sender, e); };
                             V.Add(new Vertex(loadTxtBox));
                         }
 
@@ -489,19 +618,31 @@ namespace GraphEditor
                 {
                     foreach (XElement ell in el.Elements())
                     {
-                        if (ell.Name == "line")
+                        if (ell.Name == "Line")
                         {
                             float x1 = float.Parse(ell.Attribute("x1").Value);
                             float x2 = float.Parse(ell.Attribute("x2").Value);
                             float y1 = float.Parse(ell.Attribute("y1").Value);
                             float y2 = float.Parse(ell.Attribute("y2").Value);
-                            float k = float.Parse(ell.Attribute("k").Value);
-                            float b = float.Parse(ell.Attribute("b").Value);
+                            float k;
+                            float b;
+                            try
+                            {
+                                k = float.Parse(ell.Attribute("k").Value);
+                                b = float.Parse(ell.Attribute("b").Value);
+                            }
+                            catch
+                            {
+                                k = 0;
+                                b = 0;                                    
+                            }
                             int from = Int32.Parse(ell.Attribute("From").Value);
                             int To = Int32.Parse(ell.Attribute("To").Value);
+                            PropertyCategories line = new PropertyCategories();
                             E.Add(new Edge(k, b, x1, x2, y1, y2,
                                 V[from].txtBoxVertex,
-                                V[To].txtBoxVertex));
+                                V[To].txtBoxVertex,
+                                line));
                         }
                     }
                 }
@@ -536,9 +677,9 @@ namespace GraphEditor
         {
             if (scrollValue < vScrollBar1.Value)
             {
-                for (int i=0; i<V.Count; i++)
+                for (int i = 0; i < V.Count; i++)
                 {
-                    V[i].txtBoxVertex.Top = V[i].txtBoxVertex.Top - 10 * (vScrollBar1.Value-scrollValue);
+                    V[i].txtBoxVertex.Top = V[i].txtBoxVertex.Top - 10 * (vScrollBar1.Value - scrollValue);
                 }
             }
             if (scrollValue > vScrollBar1.Value)
@@ -550,6 +691,350 @@ namespace GraphEditor
             }
             scrollValue = vScrollBar1.Value;
             reDrawAll();
+        }
+
+        private void sheet_MouseDown(object sender, MouseEventArgs e)
+        {
+            if ((newEdgeDraw == false) && (drawEdgeButton.Enabled == false))
+            {
+                for (int i = 0; i < E.Count; i++)
+                {
+                    //Если попадаем в диапозон полосы
+                    //В прямоугольнике в коором она нарисована то удаляем
+                    if ((Oy - 8 < E[i].k * Ox + E[i].b) && ((Oy + 8 > E[i].k * Ox + E[i].b)))
+                    {
+                        double rad = Math.Abs((E[i].txtBoxFrom.Left - E[i].txtBoxTo.Left) / 2);
+                        if (E[i].txtBoxFrom.Left < E[i].txtBoxTo.Left)
+                        {
+                            if ((E[i].txtBoxFrom.Left + rad) < Ox)
+                            {
+                                txtBoxStart = E[i].txtBoxFrom;
+                                newEdgeDraw = true;
+                                E.RemoveAt(i);
+                                break;
+                            }
+                            else
+                            {
+                                txtBoxStart = E[i].txtBoxTo;
+                                newEdgeDraw = true;
+                                E.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if ((E[i].txtBoxFrom.Left - rad) < Ox)
+                            {
+                                txtBoxStart = E[i].txtBoxTo;
+                                newEdgeDraw = true;
+                                E.RemoveAt(i);
+                                break;
+                            }
+                            else
+                            {
+                                txtBoxStart = E[i].txtBoxFrom;
+                                newEdgeDraw = true;
+                                E.RemoveAt(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+                reDrawAll();
+            }
+            if ((selectButton.Enabled == false) || (deleteButton.Enabled == false))
+            {
+                alreadySelected = true;
+                OxSelected = Ox;
+                OySelected = Oy;
+            }
+        }
+
+        private void sheet_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (alreadySelected == true)
+            {
+                if (drawEdgeButton.Enabled == false)
+                {
+                    int k = V.Count;
+                    if ((Ox > OxSelected) && (Oy > OySelected))
+                    {
+                        for (int i = 0; i < k; i++)
+                        {
+                            if ((V[i].txtBoxVertex.Left > OxSelected) && (V[i].txtBoxVertex.Left < Ox) &&
+                                (V[i].txtBoxVertex.Top > OySelected) && (V[i].txtBoxVertex.Top < Oy))
+                            {
+                                TextBox txt = new TextBox();
+                                txt.Multiline = true;
+                                txt.BackColor = Color.Silver;
+                                txt.TextAlign = HorizontalAlignment.Center; //To Do по центру надо а тут сверху
+                                txt.Text = V[i].txtBoxVertex.Text;
+                                txt.Left = V[i].txtBoxVertex.Left;
+                                txt.Top = V[i].txtBoxVertex.Top;
+                                txt.Width = V[i].txtBoxVertex.Width;
+                                txt.Height = V[i].txtBoxVertex.Height;
+                                System.Drawing.Drawing2D.GraphicsPath myPath =
+                                    new System.Drawing.Drawing2D.GraphicsPath();
+                                myPath.AddEllipse(0, 0, txt.Width - 1, txt.Height - 1);
+                                Region myRegion = new Region(myPath);
+                                txt.Region = myRegion;
+
+                                // Пропушим себя ещё чтоб знать чо кликать
+                                txt.MouseDown += delegate(object copyTxt, MouseEventArgs me)
+                                { clickVertex(copyTxt, me); };
+                                txt.MouseMove += delegate(object copyTxt, MouseEventArgs me)
+                                { setMouseMove(copyTxt, me); };
+                                txt.MouseUp += delegate(object copyTxt, MouseEventArgs me)
+                                { isDragOff(copyTxt, me); };
+
+                                txt.Parent = sheet;
+                                Vertex copyV = new Vertex(txt);
+                                //V[i];
+                                V.Add(copyV);
+                                V[V.Count - 1].txtBoxVertex.Left = V[V.Count - 1].txtBoxVertex.Left + 50;
+                                V[V.Count - 1].txtBoxVertex.Top = V[V.Count - 1].txtBoxVertex.Top + 50;
+                            }
+                        }
+                    }
+                }
+                if (deleteButton.Enabled == false)
+                {
+                    int k = V.Count;
+                    if ((Ox > OxSelected) && (Oy > OySelected))
+                    {
+                        try
+                        {
+                            for (int i = 0; i < k; i++)
+                            {
+                                if ((V[i].txtBoxVertex.Left > OxSelected) && (V[i].txtBoxVertex.Left < Ox) &&
+                                    (V[i].txtBoxVertex.Top > OySelected) && (V[i].txtBoxVertex.Top < Oy))
+                                {
+                                    //int p = E.Count;
+                                    for (int j = 0; j < E.Count; j++)
+                                    {
+                                        if ((V[i].txtBoxVertex == E[j].txtBoxFrom) || (V[i].txtBoxVertex == E[j].txtBoxTo))
+                                        {
+                                            E.RemoveAt(j);
+                                        }
+                                    }
+                                    V[i].txtBoxVertex.Parent = null;
+                                    V.RemoveAt(i);
+                                    i--;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            alreadySelected = false;
+            newEdgeDraw = false;
+            for (int i = 0; i < V.Count; i++)
+            {
+                if ((Ox > V[i].txtBoxVertex.Left) && (Ox < V[i].txtBoxVertex.Left + V[i].txtBoxVertex.Width) &&
+                    (Oy > V[i].txtBoxVertex.Top) && (Oy < V[i].txtBoxVertex.Top + V[i].txtBoxVertex.Height))
+                {
+                    float x1 = V[i].txtBoxVertex.Left + V[i].txtBoxVertex.Left / 2;
+                    float y1 = V[i].txtBoxVertex.Left + V[i].txtBoxVertex.Left / 2;
+                    float x2 = Ox;
+                    float y2 = Oy;
+                    float k = (y2 - y1) / (x2 - x1);
+                    float b = y1 - k * x1;
+                    PropertyCategories line = new PropertyCategories();
+                    E.Add(new Edge(k, b, V[i].txtBoxVertex.Left + 30, V[i].txtBoxVertex.Top + 30, x2, y2, txtBoxStart, V[i].txtBoxVertex,line));
+                }
+            }
+            reDrawAll();
+        }
+
+        private void propertyGrid_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        {
+            if (e.KeyData == Keys.Enter)
+            {
+                PropertyGrid props = (PropertyGrid)sender;
+                TextBox propTxt = (TextBox)props.SelectedObject;
+                PropertyCategories propLine = (PropertyCategories)props.SelectedObject;
+                if (propTxt != null)
+                {
+                    System.Drawing.Drawing2D.GraphicsPath myPath =
+                        new System.Drawing.Drawing2D.GraphicsPath();
+                    myPath.AddEllipse(0, 0, propTxt.Width - 1, propTxt.Height - 1);
+                    Region myRegion = new Region(myPath);
+                    propTxt.Region = myRegion;
+                }
+                if (propLine != null)
+                {
+
+                }
+            }
+        }
+
+        private void propertyGrid_SelectedObjectsChanged(object sender, EventArgs e)
+        {
+            
+           /* if (propTxt != null)
+            {
+                System.Drawing.Drawing2D.GraphicsPath myPath =
+                    new System.Drawing.Drawing2D.GraphicsPath();
+                myPath.AddEllipse(0, 0, propTxt.Width - 1, propTxt.Height - 1);
+                Region myRegion = new Region(myPath);
+                propTxt.Region = myRegion;
+            }
+            if (propLine != null)
+            {
+
+            }*/
+        }
+
+        private void propertyGrid_SelectedGridItemChanged(object sender, SelectedGridItemChangedEventArgs e)
+        {
+            
+        }
+
+        private void selectButton_SizeChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void propertyGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
+        {
+            PropertyGrid props = (PropertyGrid)s;
+            try
+            {
+                TextBox propTxt = (TextBox)props.SelectedObject;
+                //PropertyCategories propLine = (PropertyCategories)props.SelectedObject;
+                if (propTxt != null)
+                {
+                    System.Drawing.Drawing2D.GraphicsPath myPath =
+                        new System.Drawing.Drawing2D.GraphicsPath();
+                    myPath.AddEllipse(0, 0, propTxt.Width - 1, propTxt.Height - 1);
+                    Region myRegion = new Region(myPath);
+                    propTxt.Region = myRegion;
+                }
+            }
+            catch { }
+            try
+            {
+                PropertyCategories propLine = (PropertyCategories)props.SelectedObject;
+                reDrawAll();
+            }
+            catch { }
+            
+        }
+
+
+    }
+
+    public class Vertex
+    {
+        public TextBox txtBoxVertex;
+
+        public Vertex(TextBox txtBoxVertex)
+        {
+            this.txtBoxVertex = txtBoxVertex;
+        }
+    }
+
+    public class Edge
+    {
+        public float k, b, x1, x2, y1, y2;
+        public TextBox txtBoxFrom, txtBoxTo;
+        public PropertyCategories currentLine;
+
+        public Edge(float k, float b,
+            float x1, float x2,
+            float y1, float y2,
+            TextBox txtBoxFrom, TextBox txtBoxTo,
+            PropertyCategories currentLine)
+        {
+            this.k = k;
+            this.b = b;
+            this.x1 = x1;
+            this.x2 = x2;
+            this.y1 = y1;
+            this.y2 = y2;
+            this.txtBoxFrom = txtBoxFrom;
+            this.txtBoxTo = txtBoxTo;
+            this.currentLine = currentLine;
+        }
+    }
+    public class PropertyCategories
+    {
+        String m_Text;
+        [Browsable(true)]
+        [Description("Property: Text param 1")]
+        [Category("Text params")]
+        [DisplayName("Текст")]
+        public String TextParam1
+        {
+            get { return m_Text; }
+            set { m_Text = value; }
+        }
+        Direction m_dir;
+        [DisplayName("Direction")]
+        [Description("Direction property")]
+        [TypeConverter(typeof(DirConverter))]
+        public Direction Dir
+        {
+            get
+            {
+                return m_dir;
+            }
+            set
+            {
+                m_dir = value;
+            }
+        }
+        TextBox start, end;
+    }
+    public enum Direction
+    {
+        [Description("Начало - конец")]
+        UP,
+        [Description("Конец - начало")]
+        DOWN,
+        [Description("Неорграф")]
+        RIGHT,
+        [Description("Мультиграф")]
+        LEFT
+    }
+    class DirConverter : EnumConverter
+    {
+        private Type type;
+
+        public DirConverter(Type type)
+            : base(type)
+        {
+            this.type = type;
+        }
+
+        public override object ConvertTo(ITypeDescriptorContext context,
+            CultureInfo culture, object value, Type destType)
+        {
+            FieldInfo fi = type.GetField(Enum.GetName(type, value));
+            DescriptionAttribute descAttr =
+              (DescriptionAttribute)Attribute.GetCustomAttribute(
+                fi, typeof(DescriptionAttribute));
+
+            if (descAttr != null)
+                return descAttr.Description;
+            else
+                return value.ToString();
+        }
+
+        public override object ConvertFrom(ITypeDescriptorContext context,
+            CultureInfo culture, object value)
+        {
+            foreach (FieldInfo fi in type.GetFields())
+            {
+                DescriptionAttribute descAttr =
+                  (DescriptionAttribute)Attribute.GetCustomAttribute(
+                    fi, typeof(DescriptionAttribute));
+
+                if ((descAttr != null) && ((string)value == descAttr.Description))
+                    return Enum.Parse(type, fi.Name);
+            }
+            return Enum.Parse(type, (string)value);
         }
     }
 }
